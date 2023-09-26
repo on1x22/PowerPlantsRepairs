@@ -1,5 +1,3 @@
---docker run -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=strongPassword123' -p 1433:1433 -v D:/Data/MSSQL/22:/var/opt/mssql/data --name mssql22 -d mcr.microsoft.com/mssql/server:2022-latest
-
 CREATE DATABASE PowerPlantsRepairs;
 
 USE PowerPlantsRepairs;
@@ -32,21 +30,6 @@ CREATE TABLE PowerPlants
 	CONSTRAINT FK_PowerPlant_RduInfo FOREIGN KEY (RduNumber) REFERENCES RduInfo(Id)
 );
 
-ALTER TABLE powerPlants
-ALTER COLUMN Name NVARCHAR(50) NOT NULL
-
-ALTER TABLE powerPlants
-DROP CONSTRAINT CK__PowerPlant__Type__2739D489;
-
-ALTER TABLE powerPlants
-ALTER COLUMN Type NVARCHAR(5) NOT NULL
-
-ALTER TABLE powerPlants
-ALTER COLUMN City NVARCHAR(30) NOT NULL
-
-ALTER TABLE powerPlants
-ADD CHECK (Type IN (N'ÒÝÖ', N'ÃÒÒÝÖ', N'ÃÝÑ', N'ÃÐÝÑ', N'ÀÝÑ', N'ÃÀÝÑ', N'ÂÝÑ', N'ÑÝÑ'))
-
 CREATE TABLE CableInfo
 (
 	Id INT IDENTITY(1, 1) PRIMARY KEY,
@@ -60,29 +43,32 @@ CREATE TABLE CableInfo
 	Weight DECIMAL(7,3) NOT NULL
 );
 
-ALTER TABLE CableInfo
-ALTER COLUMN CableType NVARCHAR(15) NOT NULL
-
-ALTER TABLE CableInfo
-DROP CONSTRAINT UQ__CableInf__57437BF819084758;
-
-ALTER TABLE CableInfo
-ADD CONSTRAINT UQ__CableInf__57437BF819084758 UNIQUE (CableType)
-
-CREATE TABLE LineInfo
+CREATE TABLE Lines
 (
 	Id INT IDENTITY(1, 1) PRIMARY KEY,
-	Name VARCHAR(50) NOT NULL,
+	Name NVARCHAR(50) NOT NULL,
+	PlantOkpo BIGINT NOT NULL,
 	ParallelLines INT NOT NULL,
-	LineType VARCHAR(3) NOT NULL CHECK (LineType IN ('ÂË', 'ÊË', 'ÊÂË')),
+	LineType NVARCHAR(3) NOT NULL CHECK (LineType IN ('ÂË', 'ÊË', 'ÊÂË')),
 	CableId INT NOT NULL,
 	BaseVoltage DECIMAL(5,2) NOT NULL,
 	Length DECIMAL(7,3) NOT NULL,
-	MaintenanceCompany INT NOT NULL CHECK (MaintenanceCompany BETWEEN 1 AND 9999999999)
-	CONSTRAINT FK_LineInfo_CableInfo FOREIGN KEY (CableId) REFERENCES CableInfo(Id)
+	MaintenanceCompany BIGINT NOT NULL CHECK (MaintenanceCompany BETWEEN 1 AND 9999999999)
+	CONSTRAINT FK_LineInfo_CableInfo FOREIGN KEY (CableId) REFERENCES CableInfo(Id),
+	CONSTRAINT FK_LineConnectionInfo_PowerPlant FOREIGN KEY (PlantOkpo) REFERENCES PowerPlants(Okpo)
 );
 
-CREATE TABLE LineConectionInfo
+CREATE TABLE LineTypeInfo
+(
+	Type NVARCHAR(3) UNIQUE
+);
+
+CREATE TABLE VoltageInfo
+(
+	BaseVoltage DECIMAL(5,2) NOT NULL
+);
+
+CREATE TABLE Lines
 (
 	PlantOkpo BIGINT,
 	LineId INT,
@@ -97,14 +83,11 @@ CREATE TABLE RepairInfo
 	Description VARCHAR(11) NOT NULL
 );
 
-ALTER TABLE RepairInfo
-ALTER COLUMN Description NVARCHAR(11) NOT NULL
-
 CREATE TABLE AuxiliaryEquipmentRepairs
 (
 	PlantOkpo BIGINT NOT NULL,
-	Building VARCHAR(30) NOT NULL,
-	Equipment VARCHAR(30) NOT NULL,
+	Building NVARCHAR(30) NOT NULL,
+	Equipment NVARCHAR(30) NOT NULL,
 	StartDate DATE NOT NULL,
 	EndDate DATE NOT NULL,
 	RepairType INT NOT NULL,
@@ -120,8 +103,8 @@ CREATE TABLE AuxiliaryEquipmentRepairs
 
 CREATE TABLE MainEquipment
 (
-	EquipmentType VARCHAR(30) PRIMARY KEY,
-	Equipment VARCHAR(30) NOT NULL,
+	EquipmentType NVARCHAR(30) NOT NULL PRIMARY KEY,
+	Equipment NVARCHAR(30) NOT NULL,
 	NominalHeatingOutput DECIMAL(7,2) NULL CHECK (NominalHeatingOutput >= 0),
 	NominalPower DECIMAL(6,2) NULL CHECK (NominalPower >= 0)
 );
@@ -135,31 +118,36 @@ CREATE TABLE ContractorInfo
 	Address NVARCHAR(60) NOT NULL
 );
 
-ALTER TABLE ContractorInfo
---ALTER COLUMN Name NVARCHAR(40) NOT NULL
---ALTER COLUMN Address NVARCHAR(60) NOT NULL
---ALTER COLUMN OrganisationForm NVARCHAR(3) NOT NULL
-ADD CHECK (OrganisationForm IN (N'ÏÀÎ', N'ÀÎ', N'ÎÎÎ'))
-
-ALTER TABLE ContractorInfo
-DROP CONSTRAINT CK__Contracto__Organ__3A4CA8FD
-
-
 CREATE TABLE MainEquipmentRepairs
 (
-	PlantOkpo BIGINT,
-	EquipmentType VARCHAR(30) NOT NULL,
-	StationNumber VARCHAR(5) NOT NULL,
+	PlantOkpo BIGINT NOT NULL,
+	EquipmentType NVARCHAR(30) NOT NULL,
+	StationNumber NVARCHAR(5) NOT NULL,
 	StartDate DATE NOT NULL,
 	EndDate DATE NOT NULL,
 	RepairType INT NOT NULL,
 	Cost MONEY NOT NULL,
 	ContractorInn BIGINT NOT NULL CHECK (ContractorInn BETWEEN 1 AND 9999999999),
-	Description VARCHAR(300) NULL,
+	Description NVARCHAR(300) NULL,
 	CHECK (EndDate >= StartDate),
 	CONSTRAINT PK_MainEquipmentRepairs PRIMARY KEY CLUSTERED (PlantOkpo, EquipmentType, StationNumber),
 	CONSTRAINT FK_MainEquipmentRepairs_MainEquipment FOREIGN KEY (EquipmentType) REFERENCES MainEquipment(EquipmentType),
 	CONSTRAINT FK_MainEquipmentRepairs_ContarctorInfo FOREIGN KEY (ContractorInn) REFERENCES ContractorInfo(Inn),
 	CONSTRAINT FK_MainEquipmentRepairs_PowerPlant FOREIGN KEY (PlantOkpo) REFERENCES PowerPlants(Okpo),
 	CONSTRAINT FK_MainEquipmentRepairs_RepairInfo FOREIGN KEY (RepairType) REFERENCES RepairInfo(Id)
+);
+
+CREATE TABLE StationNumbers
+(
+	StationNumber NVARCHAR(5) UNIQUE
+);
+
+CREATE TABLE Buildings
+(
+	Building NVARCHAR(30) UNIQUE
+);
+
+CREATE TABLE AuxilaryEquipment
+(
+	Equipment NVARCHAR(30) NOT NULL 
 );
